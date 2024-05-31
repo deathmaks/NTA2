@@ -43,6 +43,8 @@ def discrete_log_brute_force(alpha, beta, p, time_limit=300):
 
 
 
+#ffffffff
+
 
 def silver_pohlig_hellman(alpha, beta, p, time_limit=300):
     print(f"Running Silver-Pohlig-Hellman for alpha={alpha}, beta={beta}, p={p}")
@@ -74,29 +76,39 @@ def silver_pohlig_hellman(alpha, beta, p, time_limit=300):
                 alpha_qe = pow(alpha, n // qe, p)
                 beta_qe = pow(beta, n // qe, p)
 
-                # Use a dictionary for quick lookup
-                table = {pow(alpha_qe, j, p): j for j in range(qe)}
+                print(f"q={q}, e={e}, alpha_qe={alpha_qe}, beta_qe={beta_qe}")
+
                 x_qe = 0
 
                 for i in range(e):
                     alpha_qei = pow(alpha_qe, q ** i, p)
-                    beta_qei = (pow(beta_qe * pow(alpha_qe, -x_qe, p), q ** i, p)) % p
+                    beta_qei = (beta_qe * pow(alpha_qe, -x_qe, p)) % p
+                    beta_qei = pow(beta_qei, q ** i, p)
 
-                    print(f"alpha_qei={alpha_qei}, beta_qei={beta_qei}")  # Debug message
+                    print(f"i={i}, alpha_qei={alpha_qei}, beta_qei={beta_qei}")
 
-                    if beta_qei in table:
-                        x_qe += table[beta_qei] * (q ** i)
-                    else:
+                    # Инкрементальный поиск
+                    found = False
+                    for j in range(qe):
+                        if pow(alpha_qe, j, p) == beta_qei:
+                            x_qe += j * (q ** i)
+                            found = True
+                            break
+
+                        if j % 100000 == 0:
+                            print(f"Searching: {j}/{qe}")
+
+                    if not found:
                         print(f"Debug: alpha_qei = {alpha_qei}, beta_qei = {beta_qei}")
-                        print(f"Debug: table keys = {list(table.keys())}")
-                        print(f"Debug: alpha_qe = {alpha_qe}, beta_qe = {beta_qe}")
                         raise ValueError(f"Table lookup failed for beta_qei={beta_qei}")
 
                 residues.append(x_qe)
                 moduli.append(qe)
-            except Exception as e:
-                print(f"An error occurred while processing factor {q}^{e}: {e}")
-                raise e
+                print(f"Residue for q={q}, e={e}: x_qe={x_qe}")
+
+            except Exception as ex:
+                print(f"An error occurred while processing factor {q}^{e}: {ex}")
+                raise ex
 
             current_time = time.time()
             if current_time > next_report_time:
@@ -109,13 +121,12 @@ def silver_pohlig_hellman(alpha, beta, p, time_limit=300):
         return result
     except TimeoutException:
         print("Time limit exceeded")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+    except Exception as ex:
+        print(f"An unexpected error occurred: {ex}")
     finally:
         signal.alarm(0)  # Disable the alarm
 
     return None
-
 def generate_data(num_samples):
     p_values = []
     brute_force_times = []
